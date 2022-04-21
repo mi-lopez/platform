@@ -33,141 +33,143 @@ class {{ className }} implements Installation
 {% endif %}
 {% endfor %}
 
-        /** Foreign keys generation **/
+/** Foreign keys generation **/
 {% for table in schema.tables %}
-{% if (allowedTables is empty or allowedTables[table.name] is defined) and if table.ForeignKeys is not empty %}
+    {% if (allowedTables is empty or allowedTables[table.name] is defined) and table.ForeignKeys is not empty %}
         $this->{{ 'add' ~ table.name|replace({'_': ' '})|title|replace({' ': ''}) ~ 'ForeignKeys' }}($schema);
-{% endif %}
+    {% endif %}
 {% endfor %}
-    }
+}
 {% for table in schema.tables %}
-{% if allowedTables is empty or allowedTables[table.name] is defined %}
-{% set methodName = 'create' ~ table.name|replace({'_': ' '})|title|replace({' ': ''}) ~ 'Table' %}
-{% endif %}
+    {% if allowedTables is empty or allowedTables[table.name] is defined %}
+        {% set methodName = 'create' ~ table.name|replace({'_': ' '})|title|replace({' ': ''}) ~ 'Table' %}
 
-    /**
-     * Create {{ table.name }} table
-     *
-     * @param Schema $schema
-     */
-    protected function {{ methodName }}(Schema $schema)
-    {
+
+        /**
+        * Create {{ table.name }} table
+        *
+        * @param Schema $schema
+        */
+        protected function {{ methodName }}(Schema $schema)
+        {
         $table = $schema->createTable('{{ table.name }}');
-{% for column in table.columns %}
-{% set columnExtendedOptions = extendedOptions[table.name][column.name] is defined ? extendedOptions[table.name][column.name] : null %}
-        $table->addColumn('{{ column.name }}', '{{ column.type.name }}', {{ macros.dumpColumnOptions(column, columnExtendedOptions) }});
-{% endfor %}
-{% for index in table.indexes %}
-{% if index.isPrimary %}
-        $table->setPrimaryKey({{ macros.dumpArray(index.columns) }});
-{% elseif index.isUnique %}
-        $table->addUniqueIndex({{ macros.dumpArray(index.columns) }}, '{{ index.name }}');
-{% else %}
-        $table->addIndex({{ macros.dumpArray(index.columns) }}, '{{ index.name }}', {{ macros.dumpArray(index.flags) }});
-{% endif %}
-{% endfor %}
-    }
+        {% for column in table.columns %}
+            {% set columnExtendedOptions = extendedOptions[table.name][column.name] is defined ? extendedOptions[table.name][column.name] : null %}
+            $table->addColumn('{{ column.name }}', '{{ column.type.name }}', {{ macros.dumpColumnOptions(column, columnExtendedOptions) }});
+        {% endfor %}
+        {% for index in table.indexes %}
+            {% if index.isPrimary %}
+                $table->setPrimaryKey({{ macros.dumpArray(index.columns) }});
+            {% elseif index.isUnique %}
+                $table->addUniqueIndex({{ macros.dumpArray(index.columns) }}, '{{ index.name }}');
+            {% else %}
+                $table->addIndex({{ macros.dumpArray(index.columns) }}, '{{ index.name }}', {{ macros.dumpArray(index.flags) }});
+            {% endif %}
+        {% endfor %}
+
+        }
+    {% endif %}
 {% endfor %}
 {% for table in schema.tables -%}
-{% if allowedTables is empty or allowedTables[table.name] is defined %}
-{% set methodName = 'add' ~ table.name|replace({'_': ' '})|title|replace({' ': ''}) ~ 'ForeignKeys' %}
-{% if table.ForeignKeys is not empty %}
+    {% if allowedTables is empty or allowedTables[table.name] is defined %}
+        {% set methodName = 'add' ~ table.name|replace({'_': ' '})|title|replace({' ': ''}) ~ 'ForeignKeys' %}
+        {% if table.ForeignKeys is not empty %}
 
-    /**
-     * Add {{ table.name }} foreign keys.
-     *
-     * @param Schema $schema
-     */
-    protected function {{ methodName }}(Schema $schema)
-    {
-        $table = $schema->getTable('{{ table.name }}');
-{% for foreignKey in table.ForeignKeys %}
-        $table->addForeignKeyConstraint(
-            $schema->getTable('{{ foreignKey.foreignTableName }}'),
-            {{ macros.dumpArray(foreignKey.localColumns) }},
-            {{ macros.dumpArray(foreignKey.foreignColumns) }},
-            {{ macros.dumpOptionsArray(foreignKey.options) }}
-        );
-{% endfor %}
-    }
-{% endif -%}
-{% endif %}
+            /**
+            * Add {{ table.name }} foreign keys.
+            *
+            * @param Schema $schema
+            */
+            protected function {{ methodName }}(Schema $schema)
+            {
+            $table = $schema->getTable('{{ table.name }}');
+            {% for foreignKey in table.ForeignKeys %}
+                $table->addForeignKeyConstraint(
+                $schema->getTable('{{ foreignKey.foreignTableName }}'),
+                {{ macros.dumpArray(foreignKey.localColumns) }},
+                {{ macros.dumpArray(foreignKey.foreignColumns) }},
+                {{ macros.dumpOptionsArray(foreignKey.options) }}
+                );
+            {% endfor %}
+            }
+        {% endif -%}
+    {% endif %}
 {% endfor -%}
 }{% apply spaceless %}
 
 {% macro dumpColumnOptions(column, columnExtendedOptions) %}
-{% apply spaceless %}
-{%- import _self as macros -%}
-{% set options = oro_migration_get_schema_column_options(column) %}
-{% set items = [] %}
-{% if options.default is defined %}{% set items = items|merge(["'default' => " ~ macros.dumpString(options.default)]) %}{% endif -%}
-{% if options.notnull is defined %}{% set items = items|merge(["'notnull' => " ~ macros.dumpBoolean(options.notnull)]) %}{% endif -%}
-{% if options.length is defined %}{% set items = items|merge(["'length' => " ~ macros.dumpInteger(options.length)]) %}{% endif -%}
-{% if options.precision is defined %}{% set items = items|merge(["'precision' => " ~ macros.dumpInteger(options.precision)]) %}{% endif -%}
-{% if options.scale is defined %}{% set items = items|merge(["'scale' => " ~ macros.dumpInteger(options.scale)]) %}{% endif -%}
-{% if options.fixed is defined %}{% set items = items|merge(["'fixed' => " ~ macros.dumpBoolean(options.fixed)]) %}{% endif -%}
-{% if options.unsigned is defined %}{% set items = items|merge(["'unsigned' => " ~ macros.dumpBoolean(options.unsigned)]) %}{% endif -%}
-{% if options.autoincrement is defined %}{% set items = items|merge(["'autoincrement' => " ~ macros.dumpBoolean(options.autoincrement)]) %}{% endif -%}
-{% if options.comment is defined %}{% set items = items|merge(["'comment' => " ~ macros.dumpString(options.comment)]) %}{% endif -%}
-{% if columnExtendedOptions is not empty %}{% set items = items|merge(["'oro_options' => " ~ macros.dumpOptionsArray(columnExtendedOptions)]) %}{% endif -%}
-[{{ items|join(', ')|raw }}]
-{% endapply %}
+    {% apply spaceless %}
+        {%- import _self as macros -%}
+        {% set options = oro_migration_get_schema_column_options(column) %}
+        {% set items = [] %}
+        {% if options.default is defined %}{% set items = items|merge(["'default' => " ~ macros.dumpString(options.default)]) %}{% endif -%}
+        {% if options.notnull is defined %}{% set items = items|merge(["'notnull' => " ~ macros.dumpBoolean(options.notnull)]) %}{% endif -%}
+        {% if options.length is defined %}{% set items = items|merge(["'length' => " ~ macros.dumpInteger(options.length)]) %}{% endif -%}
+        {% if options.precision is defined %}{% set items = items|merge(["'precision' => " ~ macros.dumpInteger(options.precision)]) %}{% endif -%}
+        {% if options.scale is defined %}{% set items = items|merge(["'scale' => " ~ macros.dumpInteger(options.scale)]) %}{% endif -%}
+        {% if options.fixed is defined %}{% set items = items|merge(["'fixed' => " ~ macros.dumpBoolean(options.fixed)]) %}{% endif -%}
+        {% if options.unsigned is defined %}{% set items = items|merge(["'unsigned' => " ~ macros.dumpBoolean(options.unsigned)]) %}{% endif -%}
+        {% if options.autoincrement is defined %}{% set items = items|merge(["'autoincrement' => " ~ macros.dumpBoolean(options.autoincrement)]) %}{% endif -%}
+        {% if options.comment is defined %}{% set items = items|merge(["'comment' => " ~ macros.dumpString(options.comment)]) %}{% endif -%}
+        {% if columnExtendedOptions is not empty %}{% set items = items|merge(["'oro_options' => " ~ macros.dumpOptionsArray(columnExtendedOptions)]) %}{% endif -%}
+        [{{ items|join(', ')|raw }}]
+    {% endapply %}
 {% endmacro %}
 
 {% macro dumpOptionsArray(arrayValues) %}
-{% apply spaceless %}
-{%- import _self as macros -%}
-{% set items = [] %}
-{% for valueName, value in arrayValues %}
-    {% if value is null %}
-        {% set items = items|merge(["'" ~ valueName ~ "' => null"]) %}
-    {% elseif value is same as(true) %}
-        {% set items = items|merge(["'" ~ valueName ~ "' => true"]) %}
-    {% elseif value is same as(false) %}
-        {% set items = items|merge(["'" ~ valueName ~ "' => false"]) %}
-    {% elseif value is iterable %}
-        {% set items = items|merge(["'" ~ valueName ~ "' => " ~ macros.dumpOptionsArray(value)]) %}
-    {% else %}
-        {% set items = items|merge(["'" ~ valueName ~ "' => '" ~ value ~ "'"]) %}
-    {% endif %}
-{% endfor %}
-[{{ items|join(', ')|raw }}]
-{% endapply %}
+    {% apply spaceless %}
+        {%- import _self as macros -%}
+        {% set items = [] %}
+        {% for valueName, value in arrayValues %}
+            {% if value is null %}
+                {% set items = items|merge(["'" ~ valueName ~ "' => null"]) %}
+            {% elseif value is same as(true) %}
+                {% set items = items|merge(["'" ~ valueName ~ "' => true"]) %}
+            {% elseif value is same as(false) %}
+                {% set items = items|merge(["'" ~ valueName ~ "' => false"]) %}
+            {% elseif value is iterable %}
+                {% set items = items|merge(["'" ~ valueName ~ "' => " ~ macros.dumpOptionsArray(value)]) %}
+            {% else %}
+                {% set items = items|merge(["'" ~ valueName ~ "' => '" ~ value ~ "'"]) %}
+            {% endif %}
+        {% endfor %}
+        [{{ items|join(', ')|raw }}]
+    {% endapply %}
 {% endmacro %}
 
 {% macro dumpArray(arrayValues) %}
-{% apply spaceless %}
-[{% for value in arrayValues %}{% if not loop.first %}, {% endif %}'{{ value }}'{% endfor %}]
-{% endapply %}
+    {% apply spaceless %}
+        [{% for value in arrayValues %}{% if not loop.first %}, {% endif %}'{{ value }}'{% endfor %}]
+    {% endapply %}
 {% endmacro %}
 
 {% macro dumpBoolean(value) %}
-{% apply spaceless %}
-    {% if value %}
-        true
-    {% else %}
-        false
-    {% endif %}
-{% endapply %}
+    {% apply spaceless %}
+        {% if value %}
+            true
+        {% else %}
+            false
+        {% endif %}
+    {% endapply %}
 {% endmacro %}
 
 {% macro dumpString(value) %}
-{% apply spaceless %}
-    {% if value is not null %}
-        '{{ value }}'
-    {% else %}
-        null
-    {% endif %}
-{% endapply %}
+    {% apply spaceless %}
+        {% if value is not null %}
+            '{{ value }}'
+        {% else %}
+            null
+        {% endif %}
+    {% endapply %}
 {% endmacro %}
 
 {% macro dumpInteger(value) %}
-{% apply spaceless %}
-    {% if value is not null %}
-        {{ value }}
-    {% else %}
-        null
-    {% endif %}
-{% endapply %}
+    {% apply spaceless %}
+        {% if value is not null %}
+            {{ value }}
+        {% else %}
+            null
+        {% endif %}
+    {% endapply %}
 {% endmacro %}
 {% endapply %}
